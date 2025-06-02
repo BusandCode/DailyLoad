@@ -6,7 +6,6 @@ import LogoComponent from './LogoComponent'
 const WelcomeScreen = () => {
   return (
     <section>
-        <div className='flex flex-col justify-center items-center gap-6'>
         <div className='flex flex-col justify-center items-center'>
             <h1 className='text-[30px] font-bold'>Welcome to DailyLoad</h1>
             <h3 className='italic text-[15px] font-normal'>Your personal task tracker</h3>
@@ -22,7 +21,6 @@ const WelcomeScreen = () => {
           rounded-[10px] p-[10px] border-[1px] border-[#2d1b69]
           text-[17px] font-normal cursor-pointer text-[#11084a]'>Signup</Link>
         </div>
-      </div>
     </section>
   )
 }

@@ -1,4 +1,5 @@
-import React from 'react'
+"use client"
+import React, { useState } from 'react'
 
 const page = () => {
   const tasks = [
@@ -19,17 +20,12 @@ const page = () => {
       time:"7am",
       status:"in progress",
       createdAt:new Date ("21/04/2025")
-    },
-    {
-      id:3,
-      title:"To go and sleep",
-      description:"Sleep for 5 hours so as to wake up early",
-      date:"3rd of June",
-      time:"11pm",
-      status:"completed",
-      createdAt:new Date ("22/04/2025")
-    },
+    }
 ]
+  const [newTask, setNewTask] = useState(false)
+  const handleCreateTask = ()=>{
+    setNewTask(true)
+  }
   return (
     <section className='bg-white w-full min-h-screen p-3 flex flex-col'>
       <div className='lg:w-1/2 mx-auto'>
@@ -39,10 +35,16 @@ const page = () => {
         <h1 className='text-[#11084a]'>Andrew Adetokunbo</h1>
       </div>
 
+      {/* Add Task Button */}
+      <div>
+        <button onClick={handleCreateTask}
+        className='bg-[#11084a] text-white text-[16px]
+        w-[120px] h-[40px] p-2 rounded-md'>Create Task</button>
+      </div>
       <div className='flex flex-col justify-center gap-[20px] mt-5'>
         {tasks.map(task=>(
           <div key={task.id} >
-            <div className='flex flex-col gap-[10px] shadow-[#2d1b69] shadow-md rounded-md p-5'>
+            <div className='flex flex-col gap-[10px]  shadow-md rounded-md p-5'>
               {/* Title */}
               <div className='flex flex-col justify-center items-start'>
               <label>Title</label>
