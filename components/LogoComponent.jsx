@@ -1,6 +1,6 @@
 export default function LogoComponent() {
   return (
-    <div className="min-h-screen bg-gradient-to-br from-slate-800 to-slate-700 flex items-center justify-center p-8">
+    // <div className="rounded-full h-[100px] w-[100px] bg-gradient-to-br from-slate-800 to-slate-700 flex items-center justify-center p-8">
       <div className="flex items-center gap-6">
         {/* Logo Icon */}
         <div className="relative w-20 h-20">
@@ -29,15 +29,10 @@ export default function LogoComponent() {
         </div>
         
         {/* Logo Text */}
-        <h1 className="text-5xl font-bold text-white tracking-wider">
+        {/* <h1 className="text-[20px] font-bold text-white tracking-wider">
           DAILYLOAD
-        </h1>
+        </h1> */}
       </div>
-      
-      {/* Download info */}
-      <div className="absolute bottom-8 left-1/2 transform -translate-x-1/2 text-white/70 text-sm text-center">
-        React component with Tailwind CSS
-      </div>
-    </div>
+    // </div>
   );
 }
