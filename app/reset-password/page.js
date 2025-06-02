@@ -57,20 +57,20 @@ const ResetPasswordPage = () => {
   };
 
   return (
-    <section className="min-h-screen bg-[#F9F1F2] h-full lg:w-3/5 lg:mx-auto">
-        <div className="bg-[#FBCFE8] w-full h-[123px] rounded-bl-[15px] rounded-br-[15px]">
+    <section className="min-h-screen h-full lg:w-3/5 lg:mx-auto">
+        <div className="w-full h-[123px] rounded-bl-[15px] rounded-br-[15px]">
             <div className="flex items-center gap-[10px] py-7 px-4">
                 <Link href="/login">
                     <Image src="/back-bg.png" width={20} height={20} alt="back-button" />
                 </Link>
                 <div>
-                    <h1 className='text-[#BE185D] text-[16px] font-bold'>Reset Password</h1>
-                    <h3 className='text-[#EC4899] text-[12px] font-normal'>We&apos;ll send you instructions to reset your password</h3>
+                    <h1 className='text-white text-[16px] font-bold'>Reset Password</h1>
+                    <h3 className='text-white text-[12px] font-normal'>We&apos;ll send you instructions to reset your password</h3>
                 </div>
             </div>
             <form onSubmit={handleResetPassword} className='flex flex-col justify-center gap-[35px] items-center min-h-[calc(100vh-123px)]'>
                 {error && (
-                  <div className='bg-red-100 border border-red-400 text-red-700 px-4 py-2 rounded w-[334px]'>
+                  <div className='bg-white text-red-700 px-4 py-2 rounded w-[334px]'>
                     {error}
                   </div>
                 )}
@@ -91,10 +91,10 @@ const ResetPasswordPage = () => {
                 ) : (
                   <>
                     <div className='flex flex-col items-start'>
-                      <label className='text-[#EC4899] text-[14px] font-light'>Email</label>
+                      <label className='text-white text-[14px] font-light'>Email</label>
                       <input 
                         type="email" 
-                        className='w-[334px] outline-none border-[1px] bg-[#FFFFFF] border-[#FBCFE8] h-[43px] rounded-[5px] p-[10px] text-[14px] text-[#00000080]' 
+                        className='w-[334px] outline-none border-[1px] border-[#2d1b69] h-[43px] rounded-[5px] p-[10px] text-[14px] text-[#2d1b69]' 
                         placeholder='youremail@gmail.com' 
                         maxLength={50}
                         value={email}

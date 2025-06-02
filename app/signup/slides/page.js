@@ -28,7 +28,7 @@ const TrackPeriodStep = ({ onNext }) => {
       
       <div className="flex justify-center mt-[100px] flex-col gap-[40px] items-center">
             <div className='flex flex-col justify-center items-center'>
-         <Image src="/track-1.png" alt='track your period image' width={87} height={187} ></Image>
+         <Image src="/track-3.png" alt='track your period image' width={200} height={200} ></Image>
         <h2 className="text-[20px] font-bold text-white text-center">Track Your Tasks</h2>
         <p className="text-[13px] font-normal mt-2 text-center text-white">
           Log your tasks, priorities, and progress for personalized productivity insights.
