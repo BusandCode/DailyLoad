@@ -14,7 +14,7 @@ import {
 import { app } from '/lib/firebase'
 import Image from 'next/image'
 
-const LoginPage = () => {
+const Page = () => {
   const router = useRouter();
   const [showPassword, setShowPassword] = useState(false);
   const [email, setEmail] = useState('');
@@ -87,31 +87,36 @@ const LoginPage = () => {
   };
 
   return (
-    <section className='h-full p-3 '>
-      <div>
+    <section className='min-h-screen flex flex-col p-3'>
+      {/* Back button - positioned at top */}
+      <div className='mb-4'>
         <Link href="/" className='flex items-center gap-2'> 
           <Image src="/back-arrow.png" alt="back arrow" width={20} height={20} />
           <small className='text-[white] text-[14px] font-normal'>Back</small>
         </Link>
-        <div className='flex flex-col justify-center items-center gap-6 min-h-screen'>
+      </div>
+
+      {/* Main content - centered */}
+      <div className='flex-1 flex flex-col justify-center items-center'>
+        <div className='flex flex-col justify-center items-center gap-6 w-full max-w-sm'>
           <div className='text-center'>
               <h1 className='text-white text-[25px] font-bold'>Login</h1>
-              <h3 className='text-[15px] font-normal  italic text-white'>Welcome back to DailyLoad</h3>
+              <h3 className='text-[15px] font-normal italic text-white'>Welcome back to DailyLoad</h3>
           </div>
 
           {error && (
-            <div className='bg-white text-red-600 px-4 py-2 rounded w-[334px]'>
+            <div className='bg-white text-red-600 px-4 py-2 rounded w-full'>
               {error}
             </div>
           )}
 
-          <form onSubmit={handleLogin} className='flex flex-col gap-4'>
+          <form onSubmit={handleLogin} className='flex flex-col gap-4 w-full'>
             <div className='flex flex-col justify-center items-start gap-[10px]'>
-              <div className='flex flex-col items-start gap-1'>
+              <div className='flex flex-col items-start gap-1 w-full'>
                 <label className='text-white text-[14px] font-light'>Email</label>
                 <input 
                   type="email" 
-                  className='w-[334px] outline-none border-[1px] 
+                  className='w-full outline-none border-[1px] 
                   bg-[#FFFFFF] border-[#2d1b69] h-[43px] rounded-[5px] 
                   p-[10px] text-[14px] text[#11084a]' 
                   placeholder='youremail@gmail.com' 
@@ -121,9 +126,9 @@ const LoginPage = () => {
                   required
                 />
               </div>
-              <div className='flex flex-col items-start gap-1'>
+              <div className='flex flex-col items-start gap-1 w-full'>
                 <label className='text-white text-[14px] font-light'>Password</label>
-                <div className='relative w-[334px]'>
+                <div className='relative w-full'>
                   <input 
                     type={showPassword ? "text" : "password"} 
                     className='w-full outline-none border-[1px] bg-[#FFFFFF] border-[#2d1b69] h-[43px] rounded-[5px] p-[10px] text-[14px] text-[#11084a]' 
@@ -138,12 +143,12 @@ const LoginPage = () => {
                     onClick={togglePasswordVisibility}
                   >
                     {showPassword ? (
-                      <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="#EC4899" className="w-5 h-5">
+                      <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="#2d1b69" className="w-5 h-5">
                         <path strokeLinecap="round" strokeLinejoin="round" d="M2.036 12.322a1.012 1.012 0 0 1 0-.639C3.423 7.51 7.36 4.5 12 4.5c4.638 0 8.573 3.007 9.963 7.178.07.207.07.431 0 .639C20.577 16.49 16.64 19.5 12 19.5c-4.638 0-8.573-3.007-9.963-7.178Z" />
                         <path strokeLinecap="round" strokeLinejoin="round" d="M15 12a3 3 0 1 1-6 0 3 3 0 0 1 6 0Z" />
                       </svg>
                     ) : (
-                      <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="#EC4899" className="w-5 h-5">
+                      <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="#2d1b69" className="w-5 h-5">
                         <path strokeLinecap="round" strokeLinejoin="round" d="M3.98 8.223A10.477 10.477 0 0 0 1.934 12C3.226 16.338 7.244 19.5 12 19.5c.993 0 1.953-.138 2.863-.395M6.228 6.228A10.451 10.451 0 0 1 12 4.5c4.756 0 8.773 3.162 10.065 7.498a10.522 10.522 0 0 1-4.293 5.774M6.228 6.228 3 3m3.228 3.228 3.65 3.65m7.894 7.894L21 21m-3.228-3.228-3.65-3.65m0 0a3 3 0 1 0-4.243-4.243m4.242 4.242L9.88 9.88" />
                       </svg>
                     )}
@@ -184,4 +189,4 @@ const LoginPage = () => {
   )
 }
 
-export default LoginPage
+export default Page
