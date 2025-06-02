@@ -1,0 +1,18 @@
+@import "tailwindcss";
+body{
+  /* font-family: "Montserrat", sans-serif; */
+  /* display: flex;
+  flex-direction: column;
+  justify-content: center;
+  min-height: 100vh; */
+  /* background-image: url("/bg.jpg");
+  background-position: center;
+  background-repeat: no-repeat;
+  background-size: cover; */
+  /* background: linear-gradient(135deg, #0c0c0c 0%, #1a1a2e 50%, #16213e 100%); */
+  /* background: linear-gradient(225deg, #1e3c72 0%, #2a5298 50%, #000000 100%); */
+  background: linear-gradient(45deg, #2d1b69 0%, #11084a 50%, #000000 100%);
+}
+button{
+  cursor: pointer;
+}
