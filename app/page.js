@@ -11,7 +11,7 @@ const Page = () => {
   };
 
   return (
-    <div className='w-full flex justify-center items-center min-h-screen text-white'>
+    <div className=''>
       {!loadingComplete ? (
         <SplashScreen onLoadingComplete={handleLoadingComplete} />
       ) : (
