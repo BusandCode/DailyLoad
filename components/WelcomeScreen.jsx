@@ -1,7 +1,7 @@
 // import Image from 'next/image'
 import Link from 'next/link'
 import React from 'react'
-import LogoComponent from './logoComponent'
+import LogoComponent from './LogoComponent'
 
 const WelcomeScreen = () => {
   return (
