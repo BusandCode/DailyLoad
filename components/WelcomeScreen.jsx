@@ -1,7 +1,7 @@
-import Image from 'next/image'
+// import Image from 'next/image'
 import Link from 'next/link'
 import React from 'react'
-// import LogoComponent from './logoComponent'
+import LogoComponent from './logoComponent'
 
 const WelcomeScreen = () => {
   return (
@@ -12,8 +12,8 @@ const WelcomeScreen = () => {
             <h3 className='italic text-[15px] font-normal'>Your personal task tracker</h3>
         </div>
         {/* Logo icon */}
-        {/* <LogoComponent /> */}
-        <Image src="/logo.JPG" width={200} height={200} alt='Logo' className='rounded-full'/>
+        <LogoComponent />
+        {/* <Image src="/logo.JPG" width={200} height={200} alt='Logo' className='rounded-full'/> */}
 
         <div className='w-[400px] flex flex-col justify-center items-center  gap-[10px]'>
           <Link href="/login" className='bg-[#2d1b69] border border-[#2d1b69] flex justify-center items-center w-4/5 h-[48px]
