@@ -11,14 +11,18 @@ import {
   serverTimestamp,
   query,
   orderBy,
-  onSnapshot
+  onSnapshot,
+  where
 } from 'firebase/firestore'
+import { getAuth, onAuthStateChanged, signOut } from 'firebase/auth'
+import { useRouter } from 'next/navigation'
 
 const Page = () => {
   const [tasks, setTasks] = useState([])
   const [newTask, setNewTask] = useState(false)
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState(null)
+  const [user, setUser] = useState(null)
   const [deleteConfirm, setDeleteConfirm] = useState({ show: false, taskId: null, taskTitle: '' })
   const [formData, setFormData] = useState({
     title: '',
@@ -28,12 +32,37 @@ const Page = () => {
     status: 'pending'
   })
 
-  // Fetch tasks from Firebase with real-time updates
+  const auth = getAuth()
+  const router = useRouter()
+
+  // Auth state listener
   useEffect(() => {
-    const fetchTasks = () => {
+    const unsubscribe = onAuthStateChanged(auth, (currentUser) => {
+      if (currentUser) {
+        setUser(currentUser)
+        setLoading(false)
+      } else {
+        // If no user is logged in, redirect to login
+        router.push('/login')
+      }
+    })
+
+    return () => unsubscribe()
+  }, [auth, router])
+
+  // Fetch user-specific tasks from Firebase with real-time updates
+  useEffect(() => {
+    if (!user) return // Don't fetch tasks if user is not authenticated
+
+    const fetchUserTasks = () => {
       try {
         const tasksCollection = collection(db, 'tasks')
-        const q = query(tasksCollection, orderBy('createdAt', 'desc'))
+        // Query tasks that belong to the current user
+        const q = query(
+          tasksCollection, 
+          where('userId', '==', user.uid),
+          orderBy('createdAt', 'desc')
+        )
         
         // Use onSnapshot for real-time updates
         const unsubscribe = onSnapshot(q, (querySnapshot) => {
@@ -43,12 +72,10 @@ const Page = () => {
           }))
           
           setTasks(tasksData)
-          setLoading(false)
           setError(null)
         }, (err) => {
           console.error('Error fetching tasks:', err)
           setError('Failed to load tasks. Please check your connection.')
-          setLoading(false)
         })
 
         // Cleanup subscription on unmount
@@ -56,15 +83,24 @@ const Page = () => {
       } catch (err) {
         console.error('Error setting up tasks listener:', err)
         setError('Failed to connect to database.')
-        setLoading(false)
       }
     }
 
-    const unsubscribe = fetchTasks()
+    const unsubscribe = fetchUserTasks()
     return () => {
       if (unsubscribe) unsubscribe()
     }
-  }, [])
+  }, [user])
+
+  const handleLogout = async () => {
+    try {
+      await signOut(auth)
+      router.push('/login')
+    } catch (error) {
+      console.error('Error signing out:', error)
+      setError('Failed to logout. Please try again.')
+    }
+  }
 
   const handleCreateTask = () => {
     setNewTask(true)
@@ -93,14 +129,16 @@ const Page = () => {
   const handleSubmit = async (e) => {
     e.preventDefault()
     
-    if (!validateForm()) return
+    if (!validateForm() || !user) return
 
     try {
       setError(null)
       
-      // Add task to Firebase
+      // Add task to Firebase with user ID
       const docRef = await addDoc(collection(db, 'tasks'), {
         ...formData,
+        userId: user.uid, // Associate task with current user
+        userEmail: user.email, // Optional: store user email for reference
         createdAt: serverTimestamp(),
         updatedAt: serverTimestamp()
       })
@@ -183,7 +221,15 @@ const Page = () => {
   if (loading) {
     return (
       <div className="bg-white w-full min-h-screen p-3 flex justify-center items-center">
-        <div className="text-[#11084a] text-lg">Loading tasks...</div>
+        <div className="text-[#11084a] text-lg">Loading...</div>
+      </div>
+    )
+  }
+
+  if (!user) {
+    return (
+      <div className="bg-white w-full min-h-screen p-3 flex justify-center items-center">
+        <div className="text-[#11084a] text-lg">Redirecting to login...</div>
       </div>
     )
   }
@@ -225,10 +271,25 @@ const Page = () => {
           </div>
         )}
 
-        {/* Name of user */}
-        <div className='flex items-center gap-1 mb-4'>
-          <div className='bg-[#11084a] p-2 text-[16px] text-white font-bold rounded-full w-[41px] h-[41px] flex justify-center items-center'>A</div>
-          <h1 className='text-[#11084a] font-semibold'>Andrew Adetokunbo</h1>
+        {/* Header with user info and logout */}
+        <div className='flex items-center justify-between mb-4'>
+          <div className='flex items-center gap-1'>
+            <div className='bg-[#11084a] p-2 text-[16px] text-white font-bold rounded-full w-[41px] h-[41px] flex justify-center items-center'>
+              {user.displayName ? user.displayName.charAt(0).toUpperCase() : user.email.charAt(0).toUpperCase()}
+            </div>
+            <div>
+              <h1 className='text-[#11084a] font-semibold'>
+                {user.displayName || user.email}
+              </h1>
+              <small className='text-gray-600'>{user.email}</small>
+            </div>
+          </div>
+          <button 
+            onClick={handleLogout}
+            className='bg-red-500 text-white px-3 py-1 rounded-md hover:bg-red-600 transition-colors text-sm'
+          >
+            Logout
+          </button>
         </div>
 
         {/* Add Task Button */}

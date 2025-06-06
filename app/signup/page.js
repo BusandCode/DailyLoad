@@ -196,7 +196,7 @@ const SignupPage = () => {
           
             <button 
               type="submit" 
-              className='w-full h-[48px] rounded-[5px] bg-[#2d1b69] border border-[#2d1b69] text-[#fff] p-[10px] flex justify-center items-center hover:bg-[#331570] transition ease-in cursor-pointer'
+              className='w-full h-[48px] text-[17px] border border-[#2d1b69] rounded-[5px] bg-[#2d1b69] text-[#fff] p-[10px] flex justify-center items-center hover:bg-[#11084a] transition ease-in cursor-pointer'
               disabled={loading}
             >
               {loading ? 'Signing up...' : 'Sign Up'}
