@@ -24,6 +24,8 @@ const Page = () => {
   const [error, setError] = useState(null)
   const [user, setUser] = useState(null)
   const [deleteConfirm, setDeleteConfirm] = useState({ show: false, taskId: null, taskTitle: '' })
+  const [taskStats, setTaskStats] = useState({ total: 0, pending: 0, inProgress: 0, completed: 0 })
+  const [editingTasks, setEditingTasks] = useState(new Set()) // Track which tasks are being edited
   const [formData, setFormData] = useState({
     title: '',
     description: '',
@@ -42,7 +44,10 @@ const Page = () => {
         setUser(currentUser)
         setLoading(false)
       } else {
-        // If no user is logged in, redirect to login
+        // Clear user-specific data when user logs out
+        setTasks([])
+        setTaskStats({ total: 0, pending: 0, inProgress: 0, completed: 0 })
+        setUser(null)
         router.push('/login')
       }
     })
@@ -50,35 +55,63 @@ const Page = () => {
     return () => unsubscribe()
   }, [auth, router])
 
+  // Calculate task statistics
+  useEffect(() => {
+    const stats = tasks.reduce((acc, task) => {
+      acc.total += 1
+      switch (task.status) {
+        case 'pending':
+          acc.pending += 1
+          break
+        case 'in progress':
+          acc.inProgress += 1
+          break
+        case 'completed':
+          acc.completed += 1
+          break
+      }
+      return acc
+    }, { total: 0, pending: 0, inProgress: 0, completed: 0 })
+    
+    setTaskStats(stats)
+  }, [tasks])
+
   // Fetch user-specific tasks from Firebase with real-time updates
   useEffect(() => {
-    if (!user) return // Don't fetch tasks if user is not authenticated
+    if (!user?.uid) return // Don't fetch tasks if user is not authenticated
 
     const fetchUserTasks = () => {
       try {
         const tasksCollection = collection(db, 'tasks')
-        // Query tasks that belong to the current user
+        // Enhanced query with better security - only fetch tasks for current user
         const q = query(
           tasksCollection, 
-          where('userId', '==', user.uid),
-          orderBy('createdAt', 'desc')
+          where('userId', '==', user.uid) // Critical: Only fetch current user's tasks
+          // Note: orderBy('createdAt', 'desc') temporarily removed until index is created
         )
         
         // Use onSnapshot for real-time updates
         const unsubscribe = onSnapshot(q, (querySnapshot) => {
-          const tasksData = querySnapshot.docs.map(doc => ({
-            id: doc.id,
-            ...doc.data()
-          }))
+          const tasksData = querySnapshot.docs.map(doc => {
+            const data = doc.data()
+            // Double-check user ownership for extra security
+            if (data.userId !== user.uid) {
+              console.warn('Task with incorrect userId detected:', doc.id)
+              return null
+            }
+            return {
+              id: doc.id,
+              ...data
+            }
+          }).filter(task => task !== null) // Remove any null tasks
           
           setTasks(tasksData)
           setError(null)
         }, (err) => {
           console.error('Error fetching tasks:', err)
-          setError('Failed to load tasks. Please check your connection.')
+          setError('Failed to load your tasks. Please check your connection.')
         })
 
-        // Cleanup subscription on unmount
         return unsubscribe
       } catch (err) {
         console.error('Error setting up tasks listener:', err)
@@ -95,6 +128,17 @@ const Page = () => {
   const handleLogout = async () => {
     try {
       await signOut(auth)
+      // Clear all user-specific data
+      setTasks([])
+      setTaskStats({ total: 0, pending: 0, inProgress: 0, completed: 0 })
+      setNewTask(false)
+      setFormData({
+        title: '',
+        description: '',
+        date: '',
+        time: '',
+        status: 'pending'
+      })
       router.push('/login')
     } catch (error) {
       console.error('Error signing out:', error)
@@ -129,21 +173,22 @@ const Page = () => {
   const handleSubmit = async (e) => {
     e.preventDefault()
     
-    if (!validateForm() || !user) return
+    if (!validateForm() || !user?.uid) return
 
     try {
       setError(null)
       
-      // Add task to Firebase with user ID
+      // Add task to Firebase with enhanced user association
       const docRef = await addDoc(collection(db, 'tasks'), {
         ...formData,
-        userId: user.uid, // Associate task with current user
-        userEmail: user.email, // Optional: store user email for reference
+        userId: user.uid, // Critical: Associate task with current user
+        userEmail: user.email, // Store user email for reference
+        userName: user.displayName || user.email.split('@')[0], // Store display name or email prefix
         createdAt: serverTimestamp(),
         updatedAt: serverTimestamp()
       })
 
-      console.log('Task added with ID:', docRef.id)
+      console.log('Task added with ID:', docRef.id, 'for user:', user.uid)
       
       // Reset form
       setFormData({
@@ -172,6 +217,18 @@ const Page = () => {
   }
 
   const handleTaskUpdate = async (taskId, field, value) => {
+    // Only allow updates if task is in editing mode
+    if (!editingTasks.has(taskId)) {
+      return
+    }
+
+    // Find the task to verify ownership
+    const task = tasks.find(t => t.id === taskId)
+    if (!task || task.userId !== user?.uid) {
+      setError('You can only edit your own tasks.')
+      return
+    }
+
     try {
       setError(null)
       
@@ -182,14 +239,43 @@ const Page = () => {
         updatedAt: serverTimestamp()
       })
 
-      console.log(`Task ${taskId} updated: ${field} = ${value}`)
+      console.log(`Task ${taskId} updated by user ${user.uid}: ${field} = ${value}`)
     } catch (error) {
       console.error('Error updating task:', error)
       setError('Error updating task. Please try again.')
     }
   }
 
+  const handleEditTask = (taskId) => {
+    setEditingTasks(prev => new Set([...prev, taskId]))
+  }
+
+  const handleSaveTask = (taskId) => {
+    setEditingTasks(prev => {
+      const newSet = new Set(prev)
+      newSet.delete(taskId)
+      return newSet
+    })
+  }
+
+  const handleCancelEdit = (taskId) => {
+    setEditingTasks(prev => {
+      const newSet = new Set(prev)
+      newSet.delete(taskId)
+      return newSet
+    })
+    // Optionally refresh the task data to revert any unsaved changes
+    // This would require storing original values, but for now we'll rely on real-time updates
+  }
+
   const handleDeleteTask = (taskId, taskTitle) => {
+    // Find the task to verify ownership
+    const task = tasks.find(t => t.id === taskId)
+    if (!task || task.userId !== user?.uid) {
+      setError('You can only delete your own tasks.')
+      return
+    }
+
     setDeleteConfirm({
       show: true,
       taskId: taskId,
@@ -198,12 +284,20 @@ const Page = () => {
   }
 
   const confirmDelete = async () => {
+    // Double-check ownership before deletion
+    const task = tasks.find(t => t.id === deleteConfirm.taskId)
+    if (!task || task.userId !== user?.uid) {
+      setError('You can only delete your own tasks.')
+      setDeleteConfirm({ show: false, taskId: null, taskTitle: '' })
+      return
+    }
+
     try {
       setError(null)
       
       // Delete from Firebase
       await deleteDoc(doc(db, 'tasks', deleteConfirm.taskId))
-      console.log(`Task ${deleteConfirm.taskId} deleted`)
+      console.log(`Task ${deleteConfirm.taskId} deleted by user ${user.uid}`)
       
       // Close confirmation dialog
       setDeleteConfirm({ show: false, taskId: null, taskTitle: '' })
@@ -221,7 +315,7 @@ const Page = () => {
   if (loading) {
     return (
       <div className="bg-white w-full min-h-screen p-3 flex justify-center items-center">
-        <div className="text-[#11084a] text-lg">Loading...</div>
+        <div className="text-[#11084a] text-lg">Loading your tasks...</div>
       </div>
     )
   }
@@ -279,7 +373,7 @@ const Page = () => {
             </div>
             <div>
               <h1 className='text-[#11084a] font-semibold'>
-                {user.displayName || user.email}
+                {user.displayName || user.email.split('@')[0]}'s Tasks
               </h1>
               <small className='text-gray-600'>{user.email}</small>
             </div>
@@ -290,6 +384,29 @@ const Page = () => {
           >
             Logout
           </button>
+        </div>
+
+        {/* Task Statistics */}
+        <div className='bg-gray-50 p-4 rounded-md mb-5 border-2 border-[#11084a]'>
+          <h2 className='text-[#11084a] font-semibold text-lg mb-3'>Your Task Summary</h2>
+          <div className='grid grid-cols-2 md:grid-cols-4 gap-4'>
+            <div className='text-center'>
+              <div className='text-2xl font-bold text-[#11084a]'>{taskStats.total}</div>
+              <div className='text-sm text-gray-600'>Total Tasks</div>
+            </div>
+            <div className='text-center'>
+              <div className='text-2xl font-bold text-yellow-600'>{taskStats.pending}</div>
+              <div className='text-sm text-gray-600'>Pending</div>
+            </div>
+            <div className='text-center'>
+              <div className='text-2xl font-bold text-blue-600'>{taskStats.inProgress}</div>
+              <div className='text-sm text-gray-600'>In Progress</div>
+            </div>
+            <div className='text-center'>
+              <div className='text-2xl font-bold text-green-600'>{taskStats.completed}</div>
+              <div className='text-sm text-gray-600'>Completed</div>
+            </div>
+          </div>
         </div>
 
         {/* Add Task Button */}
@@ -401,82 +518,120 @@ const Page = () => {
         <div className='flex flex-col justify-center gap-[20px]'>
           {tasks.length === 0 ? (
             <div className="text-center text-gray-500 py-8">
-              No tasks yet. Create your first task!
+              <p className="text-lg mb-2">No tasks yet!</p>
+              <p className="text-sm">Create your first task to get started with organizing your work.</p>
             </div>
           ) : (
-            tasks.map(task => (
-              <div key={task.id}>
-                <div className='flex flex-col gap-[10px] bg-gray-50 p-5 rounded-md shadow-md mb-5 border-2 border-[#11084a]'>
-                  {/* Delete Button */}
-                  <div className='flex justify-end mb-2'>
-                    <button 
-                      onClick={() => handleDeleteTask(task.id, task.title)}
-                      className='bg-red-500 text-white px-3 py-1 rounded-md hover:bg-red-600 transition-colors text-sm'
-                    >
-                      Delete
-                    </button>
-                  </div>
+            tasks.map(task => {
+              const isEditing = editingTasks.has(task.id)
+              return (
+                <div key={task.id}>
+                  <div className='flex flex-col gap-[10px] bg-gray-50 p-5 rounded-md shadow-md mb-5 border-2 border-[#11084a]'>
+                    {/* Action Buttons */}
+                    <div className='flex justify-between items-center mb-2'>
+                      <div className='flex gap-2'>
+                        {!isEditing ? (
+                          <button 
+                            onClick={() => handleEditTask(task.id)}
+                            className='bg-blue-500 text-white px-3 py-1 rounded-md hover:bg-blue-600 transition-colors text-sm'
+                          >
+                            Edit
+                          </button>
+                        ) : (
+                          <div className='flex gap-2'>
+                            <button 
+                              onClick={() => handleSaveTask(task.id)}
+                              className='bg-green-500 text-white px-3 py-1 rounded-md hover:bg-green-600 transition-colors text-sm'
+                            >
+                              Save
+                            </button>
+                            <button 
+                              onClick={() => handleCancelEdit(task.id)}
+                              className='bg-gray-500 text-white px-3 py-1 rounded-md hover:bg-gray-600 transition-colors text-sm'
+                            >
+                              Cancel
+                            </button>
+                          </div>
+                        )}
+                      </div>
+                      <button 
+                        onClick={() => handleDeleteTask(task.id, task.title)}
+                        className='bg-red-500 text-white px-3 py-1 rounded-md hover:bg-red-600 transition-colors text-sm'
+                      >
+                        Delete
+                      </button>
+                    </div>
 
-                  {/* Title */}
-                  <div className='flex flex-col justify-center items-start'>
-                    <label className='text-[#11084a] font-medium mb-1'>Title</label>
-                    <input 
-                      type="text" 
-                      className='h-[42px] text-[#2d1b69] border-[1px] border-[#2d1b69] w-full p-2 outline-0 rounded-md' 
-                      value={task.title || ''}
-                      onChange={(e) => handleTaskUpdate(task.id, 'title', e.target.value)}
-                    />
-                  </div>
-
-                  {/* Description */}
-                  <div className='flex flex-col justify-center items-start'>
-                    <label className='text-[#11084a] font-medium mb-1'>Description</label>
-                    <textarea 
-                      className='border-[1px] border-[#2d1b69] text-[#2d1b69] w-full resize-none h-[100px] p-2 outline-0 rounded-md' 
-                      value={task.description || ''}
-                      onChange={(e) => handleTaskUpdate(task.id, 'description', e.target.value)}
-                    ></textarea>
-                  </div>
-
-                  {/* Date and Time */}
-                  <div className='flex gap-4'>
-                    <div className='flex flex-col flex-1'>
-                      <label className='text-[#11084a] font-medium mb-1'>Date</label>
+                    {/* Title */}
+                    <div className='flex flex-col justify-center items-start'>
+                      <label className='text-[#11084a] font-medium mb-1'>Title</label>
                       <input 
                         type="text" 
-                        className='h-[42px] text-[#2d1b69] border-[1px] border-[#2d1b69] w-full p-2 outline-0 rounded-md' 
-                        value={task.date || ''}
-                        onChange={(e) => handleTaskUpdate(task.id, 'date', e.target.value)}
+                        className={`h-[42px] text-[#2d1b69] border-[1px] border-[#2d1b69] w-full p-2 outline-0 rounded-md ${!isEditing ? 'bg-gray-100 cursor-not-allowed' : ''}`}
+                        value={task.title || ''}
+                        onChange={(e) => handleTaskUpdate(task.id, 'title', e.target.value)}
+                        readOnly={!isEditing}
+                        disabled={!isEditing}
                       />
                     </div>
-                    <div className='flex flex-col flex-1'>
-                      <label className='text-[#11084a] font-medium mb-1'>Time</label>
-                      <input 
-                        type="text" 
-                        className='h-[42px] text-[#2d1b69] border-[1px] border-[#2d1b69] w-full p-2 outline-0 rounded-md' 
-                        value={task.time || ''}
-                        onChange={(e) => handleTaskUpdate(task.id, 'time', e.target.value)}
-                      />
-                    </div>
-                  </div>
 
-                  {/* Status */}
-                  <div className='flex flex-col justify-center items-start'>
-                    <label className='text-[#11084a] font-medium mb-1'>Status</label>
-                    <select 
-                      name="status" 
-                      className='h-[42px] text-[#2d1b69] border-[1px] border-[#2d1b69] w-full p-2 outline-0 rounded-md' 
-                      value={task.status || 'pending'}
-                      onChange={(e) => handleTaskUpdate(task.id, 'status', e.target.value)}
-                    >
-                      <option value="pending">Pending</option>
-                      <option value="in progress">In Progress</option>
-                      <option value="completed">Completed</option>
-                    </select>
+                    {/* Description */}
+                    <div className='flex flex-col justify-center items-start'>
+                      <label className='text-[#11084a] font-medium mb-1'>Description</label>
+                      <textarea 
+                        className={`border-[1px] border-[#2d1b69] text-[#2d1b69] w-full resize-none h-[100px] p-2 outline-0 rounded-md ${!isEditing ? 'bg-gray-100 cursor-not-allowed' : ''}`}
+                        value={task.description || ''}
+                        onChange={(e) => handleTaskUpdate(task.id, 'description', e.target.value)}
+                        readOnly={!isEditing}
+                        disabled={!isEditing}
+                      ></textarea>
+                    </div>
+
+                    {/* Date and Time */}
+                    <div className='flex gap-4'>
+                      <div className='flex flex-col flex-1'>
+                        <label className='text-[#11084a] font-medium mb-1'>Date</label>
+                        <input 
+                          type="text" 
+                          className={`h-[42px] text-[#2d1b69] border-[1px] border-[#2d1b69] w-full p-2 outline-0 rounded-md ${!isEditing ? 'bg-gray-100 cursor-not-allowed' : ''}`}
+                          value={task.date || ''}
+                          onChange={(e) => handleTaskUpdate(task.id, 'date', e.target.value)}
+                          readOnly={!isEditing}
+                          disabled={!isEditing}
+                        />
+                      </div>
+                      <div className='flex flex-col flex-1'>
+                        <label className='text-[#11084a] font-medium mb-1'>Time</label>
+                        <input 
+                          type="text" 
+                          className={`h-[42px] text-[#2d1b69] border-[1px] border-[#2d1b69] w-full p-2 outline-0 rounded-md ${!isEditing ? 'bg-gray-100 cursor-not-allowed' : ''}`}
+                          value={task.time || ''}
+                          onChange={(e) => handleTaskUpdate(task.id, 'time', e.target.value)}
+                          readOnly={!isEditing}
+                          disabled={!isEditing}
+                        />
+                      </div>
+                    </div>
+
+                    {/* Status */}
+                    <div className='flex flex-col justify-center items-start'>
+                      <label className='text-[#11084a] font-medium mb-1'>Status</label>
+                      <select 
+                        name="status" 
+                        className={`h-[42px] text-[#2d1b69] border-[1px] border-[#2d1b69] w-full p-2 outline-0 rounded-md ${!isEditing ? 'bg-gray-100 cursor-not-allowed' : ''}`}
+                        value={task.status || 'pending'}
+                        onChange={(e) => handleTaskUpdate(task.id, 'status', e.target.value)}
+                        disabled={!isEditing}
+                      >
+                        <option value="pending">Pending</option>
+                        <option value="in progress">In Progress</option>
+                        <option value="completed">Completed</option>
+                      </select>
+                    </div>
                   </div>
                 </div>
-              </div>
-            ))
+              )
+            })
           )}
         </div>
       </div>
