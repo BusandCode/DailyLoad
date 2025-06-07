@@ -3,7 +3,7 @@ import Link from 'next/link'
 import React, { useState } from 'react'
 import { getAuth, sendPasswordResetEmail, fetchSignInMethodsForEmail } from "firebase/auth";
 import { app } from '/lib/firebase'
-import Image from 'next/image';
+// import Image from 'next/image';
 
 const ResetPasswordPage = () => {
   const [email, setEmail] = useState('');
@@ -60,9 +60,9 @@ const ResetPasswordPage = () => {
     <section className="min-h-screen h-full lg:w-3/5 lg:mx-auto">
         <div className="w-full h-[123px] rounded-bl-[15px] rounded-br-[15px]">
             <div className="flex items-center gap-[10px] py-7 px-4">
-                <Link href="/login">
+                {/* <Link href="/login">
                     <Image src="/back-bg.png" width={20} height={20} alt="back-button" />
-                </Link>
+                </Link> */}
                 <div>
                     <h1 className='text-white text-[16px] font-bold'>Reset Password</h1>
                     <h3 className='text-white text-[12px] font-normal'>We&apos;ll send you instructions to reset your password</h3>
@@ -94,7 +94,8 @@ const ResetPasswordPage = () => {
                       <label className='text-white text-[14px] font-light'>Email</label>
                       <input 
                         type="email" 
-                        className='w-[334px] outline-none border-[1px] border-[#2d1b69] h-[43px] rounded-[5px] p-[10px] text-[14px] text-[#2d1b69]' 
+                        className='w-[334px] outline-none bg-[#FFFFFF]
+                  h-[43px] rounded-[5px] p-[10px] text-[14px] text-[#11084a]' 
                         placeholder='youremail@gmail.com' 
                         maxLength={50}
                         value={email}
@@ -104,7 +105,7 @@ const ResetPasswordPage = () => {
                     </div>
                     <button 
                       type="submit"
-                      className='bg-[#BE185D] text-[#ffffff] flex justify-center items-center w-[334px] min-h-[37px] rounded-[5px] p-[10px] disabled:opacity-50 disabled:cursor-not-allowed'
+                      className='w-[331px] h-[48px] text-[17px] border border-[#2d1b69] rounded-[5px] bg-[#2d1b69] text-[#fff] p-[10px] flex justify-center items-center hover:bg-[#11084a] transition ease-in cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed'
                       disabled={loading}
                     >
                       {loading ? 'Sending...' : 'Send Reset Instructions'}
@@ -113,7 +114,7 @@ const ResetPasswordPage = () => {
                 )}
                 
                 <div className='text-center'>
-                  <p className='text-[#EC4899] text-[14px] font-normal'>
+                  <p className='text-white text-[14px] font-normal'>
                     Remember your password? <Link href="/login" className='font-medium'>Login</Link>
                   </p>
                 </div>
