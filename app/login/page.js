@@ -13,6 +13,7 @@ import {
 } from "firebase/auth";
 import { app } from '/lib/firebase'
 import Image from 'next/image'
+// import { useRouter } from 'next/router'
 
 const Page = () => {
   const router = useRouter();
@@ -21,7 +22,11 @@ const Page = () => {
   const [password, setPassword] = useState('');
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
-  
+
+  // Back Button
+  // const goBack = () => {
+  //   router.back()
+  // }
   const auth = getAuth(app);
   const googleProvider = new GoogleAuthProvider();
   const facebookProvider = new FacebookAuthProvider();
@@ -90,10 +95,10 @@ const Page = () => {
     <section className='min-h-screen flex flex-col p-3'>
       {/* Back button - positioned at top */}
       <div className='mb-4'>
-        <Link href="/" className='flex items-center gap-2'> 
-          <Image src="/back-arrow.png" alt="back arrow" width={20} height={20} />
+        {/* <div onClick={goBack} className='flex items-center gap-2'> 
+          <IoIosArrowBack className='text-white text-[25px]'/>
           <small className='text-[white] text-[14px] font-normal'>Back</small>
-        </Link>
+        </div> */}
       </div>
 
       {/* Main content - centered */}
