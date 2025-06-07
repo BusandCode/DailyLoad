@@ -344,7 +344,7 @@ const Page = () => {
             <div className='bg-white p-6 rounded-lg shadow-lg max-w-md w-full mx-4 border-2 border-[#11084a]'>
               <h3 className='text-[#11084a] font-semibold text-xl mb-4'>Confirm Delete</h3>
               <p className='text-gray-700 mb-6'>
-                Are you sure you want to delete the task "{deleteConfirm.taskTitle}"? 
+                Are you sure you want to delete the task &quot;{deleteConfirm.taskTitle}&quot;? 
                 This action cannot be undone.
               </p>
               <div className='flex gap-3 justify-end'>
@@ -373,14 +373,14 @@ const Page = () => {
             </div>
             <div>
               <h1 className='text-[#11084a] font-semibold'>
-                {user.displayName || user.email.split('@')[0]}'s Tasks
+                {user.displayName || user.email.split('@')[0]}&apos;s Tasks
               </h1>
               <small className='text-gray-600'>{user.email}</small>
             </div>
           </div>
           <button 
             onClick={handleLogout}
-            className='bg-red-500 text-white px-3 py-1 rounded-md hover:bg-red-600 transition-colors text-sm'
+            className='bg-red-500 text-white px-3 py-2 rounded-md hover:bg-red-600 transition-colors text-sm'
           >
             Logout
           </button>
