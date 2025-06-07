@@ -10,7 +10,8 @@ import {
   FacebookAuthProvider,
   TwitterAuthProvider,
   signInWithPopup,
-  updateProfile
+  updateProfile,
+  fetchSignInMethodsForEmail
 } from "firebase/auth";
 import { app } from '/lib/firebase'
 
@@ -23,6 +24,7 @@ const SignupPage = () => {
   const [agreeToTerms, setAgreeToTerms] = useState(false);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
+  const [success, setSuccess] = useState('');
 
   const auth = getAuth(app);
   const googleProvider = new GoogleAuthProvider();
@@ -37,36 +39,83 @@ const SignupPage = () => {
     e.preventDefault();
     setLoading(true);
     setError('');
+    setSuccess('');
     
+    // Basic validation
+    if (!fullName.trim()) {
+      setError('Please enter your full name');
+      setLoading(false);
+      return;
+    }
+
+    if (!email.trim()) {
+      setError('Please enter your email address');
+      setLoading(false);
+      return;
+    }
+
+    if (!password.trim()) {
+      setError('Please enter a password');
+      setLoading(false);
+      return;
+    }
+
+    if (password.length < 6) {
+      setError('Password must be at least 6 characters long');
+      setLoading(false);
+      return;
+    }
+
     if (!agreeToTerms) {
       setError('You must agree to the terms and privacy policy');
       setLoading(false);
       return;
     }
 
+    // Email format validation
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    if (!emailRegex.test(email.trim())) {
+      setError('Please enter a valid email address');
+      setLoading(false);
+      return;
+    }
+
     try {
+      console.log('Attempting to create user with:', email.trim());
+      
       // Create user with email and password
-      const userCredential = await createUserWithEmailAndPassword(auth, email, password);
+      const userCredential = await createUserWithEmailAndPassword(auth, email.trim(), password);
+      console.log('User created successfully:', userCredential.user.uid);
       
       // Update profile with display name
       await updateProfile(userCredential.user, {
-        displayName: fullName
+        displayName: fullName.trim()
       });
+      console.log('Profile updated with display name:', fullName.trim());
       
-      // Redirect to signup/slides after successful signup
-      router.push('/signup/slides');
+      setSuccess('Account created successfully! Redirecting...');
+      
+      // Small delay to show success message
+      setTimeout(() => {
+        router.push('/signup/slides');
+      }, 1500);
+      
     } catch (error) {
       console.error("Signup error:", error);
       
       // Handle specific error codes
       if (error.code === "auth/email-already-in-use") {
-        setError("This email is already registered. Please use a different email or login.");
+        setError("This email is already registered. Please use a different email or try logging in.");
       } else if (error.code === "auth/invalid-email") {
         setError("Please enter a valid email address.");
       } else if (error.code === "auth/weak-password") {
-        setError("Password is too weak. Please use at least 6 characters.");
+        setError("Password is too weak. Please use at least 6 characters with a mix of letters and numbers.");
+      } else if (error.code === "auth/network-request-failed") {
+        setError("Network error. Please check your internet connection and try again.");
+      } else if (error.code === "auth/too-many-requests") {
+        setError("Too many requests. Please wait a moment and try again.");
       } else {
-        setError("Failed to register. Please try again.");
+        setError(`Failed to register: ${error.message}`);
       }
     } finally {
       setLoading(false);
@@ -76,17 +125,35 @@ const SignupPage = () => {
   const handleSocialSignup = async (provider) => {
     setLoading(true);
     setError('');
+    setSuccess('');
     
     try {
-      await signInWithPopup(auth, provider);
-      router.push('/signup/slides'); // Redirect to slides after successful signup
+      const result = await signInWithPopup(auth, provider);
+      console.log('Social signup successful:', result.user.uid);
+      setSuccess('Account created successfully! Redirecting...');
+      
+      setTimeout(() => {
+        router.push('/signup/slides');
+      }, 1500);
+      
     } catch (error) {
       console.error("Social signup error:", error);
       
       if (error.code === "auth/account-exists-with-different-credential") {
-        setError("An account already exists with the email address");
+        try {
+          const methods = await fetchSignInMethodsForEmail(auth, error.customData?.email);
+          setError(`An account already exists with this email. Please try logging in with ${methods.join(", ")}.`);
+        } catch {
+          setError("An account already exists with this email but with different sign-in credentials.");
+        }
+      } else if (error.code === "auth/popup-closed-by-user") {
+        setError("Sign-up cancelled. Please try again.");
+      } else if (error.code === "auth/popup-blocked") {
+        setError("Popup blocked. Please allow popups for this site and try again.");
+      } else if (error.code === "auth/network-request-failed") {
+        setError("Network error. Please check your internet connection and try again.");
       } else {
-        setError("There's an issue with signing up. Please try again.");
+        setError(`Social sign-up failed: ${error.message}`);
       }
     } finally {
       setLoading(false);
@@ -96,10 +163,6 @@ const SignupPage = () => {
   return (
     <section className='h-full p-3'>
       <div>
-        {/* <Link href="/" className='flex items-center gap-1'> 
-           <IoIosArrowBack className='text-white text-[25px]'/>
-          <small className='text-white text-[14px] font-normal'>Back</small>
-        </Link> */}
         <div className='flex flex-col justify-center items-center gap-6 min-h-screen'>
           <div className='text-center'>
               <h1 className='text-white text-[25px] font-bold'>Sign Up</h1>
@@ -107,8 +170,14 @@ const SignupPage = () => {
           </div>
 
           {error && (
-            <div className='bg-white text-red-700 px-4 py-2 rounded w-[334px]'>
+            <div className='bg-red-100 border border-red-400 text-red-700 px-4 py-2 rounded w-[334px]'>
               {error}
+            </div>
+          )}
+
+          {success && (
+            <div className='bg-green-100 border border-green-400 text-green-700 px-4 py-2 rounded w-[334px]'>
+              {success}
             </div>
           )}
 
@@ -119,12 +188,13 @@ const SignupPage = () => {
                 <input 
                   type="text" 
                   className='w-[334px] outline-none bg-[#FFFFFF]
-                  h-[43px] rounded-[5px] p-[10px] text-[14px] text[#11084a]' 
+                  h-[43px] rounded-[5px] p-[10px] text-[14px] text-[#11084a]' 
                   placeholder='Your Name' 
-                  maxLength={40}
+                  maxLength={50}
                   value={fullName}
                   onChange={(e) => setFullName(e.target.value)}
                   required
+                  disabled={loading}
                 />
               </div>
               <div className='flex flex-col items-start gap-1'>
@@ -132,12 +202,13 @@ const SignupPage = () => {
                 <input 
                   type="email" 
                   className='w-[334px] outline-none border-[1px] bg-[#FFFFFF]
-                  h-[43px] rounded-[5px] p-[10px] text-[14px] text[#11084a]' 
+                  h-[43px] rounded-[5px] p-[10px] text-[14px] text-[#11084a]' 
                   placeholder='youremail@gmail.com' 
-                  maxLength={30}
+                  maxLength={50}
                   value={email}
                   onChange={(e) => setEmail(e.target.value)}
                   required
+                  disabled={loading}
                 />
               </div>
               <div className='flex flex-col items-start gap-1'>
@@ -146,17 +217,19 @@ const SignupPage = () => {
                   <input 
                     type={showPassword ? "text" : "password"} 
                     className='w-full outline-none bg-[#FFFFFF]
-                    h-[43px] rounded-[5px] p-[10px] text-[14px] text[#11084a]' 
-                    placeholder='password'
+                    h-[43px] rounded-[5px] p-[10px] text-[14px] text-[#11084a]' 
+                    placeholder='At least 6 characters'
                     value={password}
                     onChange={(e) => setPassword(e.target.value)}
                     required
                     minLength={6}
+                    disabled={loading}
                   />
                    <button 
                     type="button" 
                     className="absolute inset-y-0 right-0 pr-3 flex items-center" 
                     onClick={togglePasswordVisibility}
+                    disabled={loading}
                   >
                     {showPassword ? (
                       <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="#2d1b69" className="w-5 h-5">
@@ -172,6 +245,7 @@ const SignupPage = () => {
                 </div>
               </div>
             </div>
+            
             {/* Terms and condition div */}
             <div>
               <article className='flex items-center gap-2'>
@@ -180,23 +254,15 @@ const SignupPage = () => {
                   checked={agreeToTerms}
                   onChange={(e) => setAgreeToTerms(e.target.checked)}
                   className='w-4 h-4 text-white focus:ring-[#EC4899] border-[#FBCFE8] rounded'
+                  disabled={loading}
                 />
                 <small className='text-white text-[14px] font-normal'>I agree to the terms and privacy policy</small>
               </article>
-              {/* <article className='flex items-center gap-2'>
-                <input 
-                  type="checkbox" 
-                  checked={agreeToTerms}
-                  onChange={(e) => setAgreeToTerms(e.target.checked)}
-                  className='w-4 h-4 text-white focus:ring-[#EC4899] border-[#FBCFE8] rounded'
-                />
-                <small className='text-white text-[14px] font-normal'>Sign up for Newsletter</small>
-              </article> */}
             </div>
           
             <button 
               type="submit" 
-              className='w-full h-[48px] text-[17px] border border-[#2d1b69] rounded-[5px] bg-[#2d1b69] text-[#fff] p-[10px] flex justify-center items-center hover:bg-[#11084a] transition ease-in cursor-pointer'
+              className='w-full h-[48px] text-[17px] border border-[#2d1b69] rounded-[5px] bg-[#2d1b69] text-[#fff] p-[10px] flex justify-center items-center hover:bg-[#11084a] transition ease-in cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed'
               disabled={loading}
             >
               {loading ? 'Signing up...' : 'Sign Up'}
@@ -205,13 +271,25 @@ const SignupPage = () => {
           
           <p className='text-white text-[14px] font-normal'>Or continue with</p>
           <article className='flex justify-center items-center gap-[20px]'>
-            <button onClick={() => handleSocialSignup(googleProvider)} disabled={loading}>
+            <button 
+              onClick={() => handleSocialSignup(googleProvider)} 
+              disabled={loading}
+              className="disabled:opacity-50 disabled:cursor-not-allowed"
+            >
               <Image src="/google.png" alt="google" width={48} height={48} />
             </button>
-            <button onClick={() => handleSocialSignup(facebookProvider)} disabled={loading}>
+            <button 
+              onClick={() => handleSocialSignup(facebookProvider)} 
+              disabled={loading}
+              className="disabled:opacity-50 disabled:cursor-not-allowed"
+            >
               <Image src="/facebook.png" alt="facebook" width={48} height={48} />
             </button>
-            <button onClick={() => handleSocialSignup(twitterProvider)} disabled={loading}>
+            <button 
+              onClick={() => handleSocialSignup(twitterProvider)} 
+              disabled={loading}
+              className="disabled:opacity-50 disabled:cursor-not-allowed"
+            >
               <Image src="/twitter.png" alt="twitter" width={48} height={48} />
             </button>
           </article>

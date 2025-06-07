@@ -13,7 +13,6 @@ import {
 } from "firebase/auth";
 import { app } from '/lib/firebase'
 import Image from 'next/image'
-// import { useRouter } from 'next/router'
 
 const Page = () => {
   const router = useRouter();
@@ -23,10 +22,6 @@ const Page = () => {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
 
-  // Back Button
-  // const goBack = () => {
-  //   router.back()
-  // }
   const auth = getAuth(app);
   const googleProvider = new GoogleAuthProvider();
   const facebookProvider = new FacebookAuthProvider();
@@ -41,25 +36,41 @@ const Page = () => {
     setLoading(true);
     setError('');
     
+    // Basic validation
+    if (!email.trim() || !password.trim()) {
+      setError("Please enter both email and password.");
+      setLoading(false);
+      return;
+    }
+
+    // Basic email format validation
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    if (!emailRegex.test(email)) {
+      setError("Please enter a valid email address.");
+      setLoading(false);
+      return;
+    }
+    
     try {
-      await signInWithEmailAndPassword(auth, email, password);
+      await signInWithEmailAndPassword(auth, email.trim(), password);
       router.push('/dashboard'); // Redirect to dashboard after successful login
     } catch (error) {
       console.error("Login error:", error);
       
       // Handle specific error codes
-      if (error.code === "auth/user-not-found") {
-        setError("This email is not registered. Please sign up first.");
-      } else if (error.code === "auth/wrong-password") {
-        setError("Incorrect password. Please try again.");
+      if (error.code === "auth/invalid-credential") {
+        setError("Invalid email or password. Please check your credentials and try again.");
       } else if (error.code === "auth/invalid-email") {
         setError("Please enter a valid email address.");
       } else if (error.code === "auth/too-many-requests") {
         setError("Too many failed login attempts. Please try again later.");
-      } 
-      // else {
-      //   setError("Failed to login. Please check your credentials and try again.");
-      // }
+      } else if (error.code === "auth/user-disabled") {
+        setError("This account has been disabled. Please contact support.");
+      } else if (error.code === "auth/network-request-failed") {
+        setError("Network error. Please check your internet connection and try again.");
+      } else {
+        setError("Login failed. Please try again.");
+      }
     } finally {
       setLoading(false);
     }
@@ -83,8 +94,14 @@ const Page = () => {
         } catch {
           setError("An account already exists with this email but with different sign-in credentials.");
         }
+      } else if (error.code === "auth/popup-closed-by-user") {
+        setError("Login cancelled. Please try again.");
+      } else if (error.code === "auth/popup-blocked") {
+        setError("Popup blocked. Please allow popups for this site and try again.");
+      } else if (error.code === "auth/network-request-failed") {
+        setError("Network error. Please check your internet connection and try again.");
       } else {
-        setError("Failed to login. Please try again.");
+        setError("Social login failed. Please try again.");
       }
     } finally {
       setLoading(false);
@@ -110,7 +127,7 @@ const Page = () => {
           </div>
 
           {error && (
-            <div className='bg-white text-red-600 px-4 py-2 rounded w-full'>
+            <div className='bg-red-100 border border-red-400 text-red-700 px-4 py-2 rounded w-full'>
               {error}
             </div>
           )}
@@ -123,12 +140,13 @@ const Page = () => {
                   type="email" 
                   className='w-full outline-none border-[1px] 
                   bg-[#FFFFFF] border-[#2d1b69] h-[43px] rounded-[5px] 
-                  p-[10px] text-[14px] text[#11084a]' 
+                  p-[10px] text-[14px] text-[#11084a]' 
                   placeholder='youremail@gmail.com' 
-                  maxLength={30}
+                  maxLength={50}
                   value={email}
                   onChange={(e) => setEmail(e.target.value)}
                   required
+                  disabled={loading}
                 />
               </div>
               <div className='flex flex-col items-start gap-1 w-full'>
@@ -141,11 +159,14 @@ const Page = () => {
                     value={password}
                     onChange={(e) => setPassword(e.target.value)}
                     required
+                    disabled={loading}
+                    minLength={6}
                   />
                   <button 
                     type="button" 
                     className="absolute inset-y-0 right-0 pr-3 flex items-center" 
                     onClick={togglePasswordVisibility}
+                    disabled={loading}
                   >
                     {showPassword ? (
                       <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="#2d1b69" className="w-5 h-5">
@@ -165,7 +186,7 @@ const Page = () => {
           
             <button 
               type="submit" 
-              className='w-full h-[48px] text-[17px] border border-[#2d1b69] rounded-[5px] bg-[#2d1b69] text-[#fff] p-[10px] flex justify-center items-center hover:bg-[#11084a] transition ease-in cursor-pointer'
+              className='w-full h-[48px] text-[17px] border border-[#2d1b69] rounded-[5px] bg-[#2d1b69] text-[#fff] p-[10px] flex justify-center items-center hover:bg-[#11084a] transition ease-in cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed'
               disabled={loading}
             >
               {loading ? 'Logging in...' : 'Login'}
@@ -174,13 +195,25 @@ const Page = () => {
           
           <p className='text-white text-[14px] font-normal'>Or continue with</p>
           <article className='flex justify-center items-center gap-[20px]'>
-            <button onClick={() => handleSocialLogin(googleProvider)} disabled={loading}>
+            <button 
+              onClick={() => handleSocialLogin(googleProvider)} 
+              disabled={loading}
+              className="disabled:opacity-50 disabled:cursor-not-allowed"
+            >
               <Image src="/google.png" alt="google" width={48} height={48} />
             </button>
-            <button onClick={() => handleSocialLogin(facebookProvider)} disabled={loading}>
+            <button 
+              onClick={() => handleSocialLogin(facebookProvider)} 
+              disabled={loading}
+              className="disabled:opacity-50 disabled:cursor-not-allowed"
+            >
               <Image src="/facebook.png" alt="facebook" width={48} height={48} />
             </button>
-            <button onClick={() => handleSocialLogin(twitterProvider)} disabled={loading}>
+            <button 
+              onClick={() => handleSocialLogin(twitterProvider)} 
+              disabled={loading}
+              className="disabled:opacity-50 disabled:cursor-not-allowed"
+            >
               <Image src="/twitter.png" alt="twitter" width={48} height={48} />
             </button>
           </article>
